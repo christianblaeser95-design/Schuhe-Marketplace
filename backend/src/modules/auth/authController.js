@@ -1,11 +1,44 @@
 const axios = require('axios');
 const authService = require('./authService');
 
+async function register(req, res) {
+  try {
+    const { email, name, password } = req.body;
+
+    if (!email || !name || !password) {
+      return res.status(400).json({ error: 'Email, name, and password required' });
+    }
+
+    const user = await authService.registerUser(email, name, password);
+    const token = authService.generateToken(user);
+
+    res.status(201).json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+async function login(req, res) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    const user = await authService.loginUser(email, password);
+    const token = authService.generateToken(user);
+
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+}
+
 async function googleLogin(req, res) {
   try {
     const { idToken } = req.body;
 
-    // Verify token with Google (simplified)
     const response = await axios.get(
       `https://www.googleapis.com/oauth2/v1/tokeninfo?id_token=${idToken}`
     );
@@ -24,7 +57,6 @@ async function facebookLogin(req, res) {
   try {
     const { accessToken } = req.body;
 
-    // Verify with Facebook (simplified)
     const response = await axios.get(
       `https://graph.facebook.com/me?fields=id,email,name&access_token=${accessToken}`
     );
@@ -43,7 +75,6 @@ async function web3Login(req, res) {
   try {
     const { walletAddress, signature, message } = req.body;
 
-    // Verify signature (simplified - use ethers.js in production)
     const user = await authService.findOrCreateUser(
       walletAddress,
       walletAddress,
@@ -66,11 +97,10 @@ function logout(req, res) {
 async function getCurrentUser(req, res) {
   try {
     const userId = req.user.id;
-    // Fetch user from DB
     res.json({ user: req.user });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 }
 
-module.exports = { googleLogin, facebookLogin, web3Login, logout, getCurrentUser };
+module.exports = { register, login, googleLogin, facebookLogin, web3Login, logout, getCurrentUser };
